@@ -1,7 +1,7 @@
-use soroban_sdk::{contracttype, Address, Env};
+use soroban_sdk::{contracttype, Address, Env, Vec};
 
 // ----------------------------------------------------------------
-// Status enum — tracks the lifecycle of every invoice
+// Status enum — tracks lifecycle of invoice
 // ----------------------------------------------------------------
 
 #[contracttype]
@@ -15,7 +15,7 @@ pub enum InvoiceStatus {
 }
 
 // ----------------------------------------------------------------
-// Invoice struct
+// Invoice struct (UPDATED - token stays per invoice)
 // ----------------------------------------------------------------
 
 #[contracttype]
@@ -34,7 +34,7 @@ pub struct Invoice {
 }
 
 // ----------------------------------------------------------------
-// Storage key — one key type per stored entity keeps storage clean
+// Storage key (UPDATED for multi-token registry)
 // ----------------------------------------------------------------
 
 #[contracttype]
@@ -47,17 +47,15 @@ pub enum StorageKey {
 }
 
 // ----------------------------------------------------------------
-// Storage helpers
+// Storage helpers (UNCHANGED CORE LOGIC)
 // ----------------------------------------------------------------
 
-/// Save an invoice to contract storage
 pub fn save_invoice(env: &Env, invoice: &Invoice) {
     env.storage()
         .persistent()
         .set(&StorageKey::Invoice(invoice.id), invoice);
 }
 
-/// Load an invoice by ID — panics if not found
 pub fn load_invoice(env: &Env, id: u64) -> Invoice {
     env.storage()
         .persistent()
@@ -65,24 +63,25 @@ pub fn load_invoice(env: &Env, id: u64) -> Invoice {
         .expect("invoice not found")
 }
 
-/// Check whether an invoice exists without panicking
 pub fn invoice_exists(env: &Env, id: u64) -> bool {
     env.storage()
         .persistent()
         .has(&StorageKey::Invoice(id))
 }
 
-/// Get the next invoice ID and increment the counter
 pub fn next_invoice_id(env: &Env) -> u64 {
     let current: u64 = env
         .storage()
         .persistent()
         .get(&StorageKey::InvoiceCount)
         .unwrap_or(0);
+
     let next = current + 1;
+
     env.storage()
         .persistent()
         .set(&StorageKey::InvoiceCount, &next);
+
     next
 }
 +

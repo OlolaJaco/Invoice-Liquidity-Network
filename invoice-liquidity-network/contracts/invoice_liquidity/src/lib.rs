@@ -6,7 +6,7 @@ mod invoice;
 use soroban_sdk::{
     contract, contractimpl,
     token::Client as TokenClient,
-    Address, Env,
+    Address, Env, Vec,
 };
 
 use errors::ContractError;
@@ -15,65 +15,84 @@ use invoice::{
     save_invoice, save_invoice_funders, set_payer_score, Invoice, InvoiceStatus, StorageKey,
 };
 
+// ----------------------------------------------------------------
+// Storage Key (FIXED - single source of truth)
+// ----------------------------------------------------------------
+
+#[contracttype]
+pub enum StorageKey {
+    Invoice(u64),
+    InvoiceCount,
+
+    ApprovedToken(Address),
+    TokenList,
+}
+
+// ----------------------------------------------------------------
+// CONTRACT
+// ----------------------------------------------------------------
+
 #[contract]
 pub struct InvoiceLiquidityContract;
 
 #[contractimpl]
 impl InvoiceLiquidityContract {
 
-    // ----------------------------------------------------------------
-    // initialize
-    //
-    // Called once by the deployer to set the USDC token address.
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------------
+    // initialize (multi-token aware)
+    // ------------------------------------------------------------
     pub fn initialize(env: Env, token: Address) -> Result<(), ContractError> {
-        if env.storage().instance().has(&StorageKey::Token) {
-            return Err(ContractError::Unauthorized); // already initialized
+        if env.storage().instance().has(&StorageKey::InvoiceCount) {
+            return Err(ContractError::Unauthorized);
         }
-        env.storage().instance().set(&StorageKey::Token, &token);
+
+        // approve first token (USDC or default)
+        env.storage()
+            .persistent()
+            .set(&StorageKey::ApprovedToken(token.clone()), &true);
+
+        let mut list: Vec<Address> = Vec::new(&env);
+        list.push_back(token.clone());
+
+        env.storage()
+            .persistent()
+            .set(&StorageKey::TokenList, &list);
+
         Ok(())
     }
 
-    // ----------------------------------------------------------------
-    // submit_invoice
-    //
-    // Called by a freelancer to register an unpaid invoice.
-    // No funds move at this stage — the invoice sits as Pending
-    // until a liquidity provider funds it.
-    //
-    // Returns the new invoice ID.
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------------
+    // submit_invoice (NOW TOKEN-AWARE)
+    // ------------------------------------------------------------
     pub fn submit_invoice(
-        env:           Env,
-        freelancer:    Address,
-        payer:         Address,
-        amount:        i128,
-        due_date:      u64,
-        discount_rate: u32,   // basis points, max 5000 (= 50%)
+        env: Env,
+        freelancer: Address,
+        payer: Address,
+        amount: i128,
+        due_date: u64,
+        discount_rate: u32,
+        token: Address,
     ) -> Result<u64, ContractError> {
 
-        // Require the freelancer's signature — they must authorise submission
         freelancer.require_auth();
-
-        // --- Validation ---
 
         if amount <= 0 {
             return Err(ContractError::InvalidAmount);
         }
 
-        // Cap discount at 50% (5000 basis points) — anything higher is
-        // predatory and almost certainly a mistake
         if discount_rate == 0 || discount_rate > 5_000 {
             return Err(ContractError::InvalidDiscountRate);
         }
 
-        // due_date must be in the future
         let now = env.ledger().timestamp();
         if due_date <= now {
             return Err(ContractError::InvalidDueDate);
         }
 
-        // --- Build and persist the invoice ---
+        // token validation
+        if !is_approved_token(&env, &token) {
+            return Err(ContractError::Unauthorized);
+        }
 
         let id = next_invoice_id(&env);
 
@@ -92,7 +111,6 @@ impl InvoiceLiquidityContract {
 
         save_invoice(&env, &invoice);
 
-        // Emit event so indexers and frontends can track submissions
         env.events().publish(
             (soroban_sdk::symbol_short!("submitted"),),
             id,
@@ -101,21 +119,12 @@ impl InvoiceLiquidityContract {
         Ok(id)
     }
 
-    // ----------------------------------------------------------------
-    // fund_invoice
-    //
-    // Called by a liquidity provider to fund a Pending invoice.
-    //
-    // The LP sends the full invoice amount in USDC to this contract.
-    // The contract immediately forwards (amount - discount) to the
-    // freelancer, keeping the discount in escrow.
-    //
-    // When mark_paid is called, the full amount is released to the LP —
-    // they earn the discount spread as yield.
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------------
+    // fund_invoice (USES invoice.token)
+    // ------------------------------------------------------------
     pub fn fund_invoice(
-        env:        Env,
-        funder:     Address,
+        env: Env,
+        funder: Address,
         invoice_id: u64,
         fund_amount: i128,
     ) -> Result<(), ContractError> {
@@ -190,20 +199,11 @@ impl InvoiceLiquidityContract {
         Ok(())
     }
 
-    // ----------------------------------------------------------------
-    // mark_paid
-    //
-    // Called by the payer to settle the invoice in full.
-    //
-    // The payer sends the full invoice amount to this contract.
-    // The contract releases it to the LP — who now holds:
-    //   - their original principal back
-    //   - plus the discount they kept in escrow = their yield
-    //
-    // Only the registered payer can call this function.
-    // ----------------------------------------------------------------
+    // ------------------------------------------------------------
+    // mark_paid (USES invoice.token)
+    // ------------------------------------------------------------
     pub fn mark_paid(
-        env:        Env,
+        env: Env,
         invoice_id: u64,
     ) -> Result<(), ContractError> {
 
@@ -213,14 +213,13 @@ impl InvoiceLiquidityContract {
 
         let mut invoice = load_invoice(&env, invoice_id);
 
-        // Only the registered payer can mark it paid
         invoice.payer.require_auth();
 
         match invoice.status {
-            InvoiceStatus::Pending   => return Err(ContractError::NotFunded),
-            InvoiceStatus::Paid      => return Err(ContractError::AlreadyPaid),
+            InvoiceStatus::Pending => return Err(ContractError::NotFunded),
+            InvoiceStatus::Paid => return Err(ContractError::AlreadyPaid),
             InvoiceStatus::Defaulted => return Err(ContractError::InvoiceDefaulted),
-            InvoiceStatus::Funded    => {} // correct state, continue
+            InvoiceStatus::Funded => {}
         }
 
         // Calculate total payout to all funders (principal + yield)
@@ -244,9 +243,11 @@ impl InvoiceLiquidityContract {
             token.transfer(&contract_address, &funder_addr, &share);
         }
 
-        // --- Update invoice state ---
+        token.transfer(&invoice.payer, &contract, &invoice.amount);
+        token.transfer(&contract, &funder, &(invoice.amount + discount_amount));
 
         invoice.status = InvoiceStatus::Paid;
+
         save_invoice(&env, &invoice);
 
         // --- Update payer reputation ---
@@ -427,9 +428,6 @@ impl InvoiceLiquidityContract {
         Ok(load_invoice(&env, invoice_id))
     }
 
-    // ----------------------------------------------------------------
-    // get_invoice_count — read-only helper for frontends
-    // ----------------------------------------------------------------
     pub fn get_invoice_count(env: Env) -> u64 {
         env.storage()
             .persistent()
@@ -439,20 +437,23 @@ impl InvoiceLiquidityContract {
 }
 
 // ----------------------------------------------------------------
-// Private helpers
+// TOKEN HELPERS
 // ----------------------------------------------------------------
 
-fn usdc_client(env: &Env) -> TokenClient<'_> {
-    let usdc_address: Address = env.storage()
-        .instance()
-        .get(&StorageKey::Token)
-        .expect("contract not initialized");
-    TokenClient::new(env, &usdc_address)
+fn token_client(env: &Env, token: &Address) -> TokenClient<'_> {
+    TokenClient::new(env, token)
 }
 
-fn discount_rate_as_i128(rate: u32) -> i128 {
-    rate as i128
+fn is_approved_token(env: &Env, token: &Address) -> bool {
+    env.storage()
+        .persistent()
+        .get(&StorageKey::ApprovedToken(token.clone()))
+        .unwrap_or(false)
 }
+
+// ----------------------------------------------------------------
+// TEST MODULES
+// ----------------------------------------------------------------
 
 mod test;
 mod tests_security;
