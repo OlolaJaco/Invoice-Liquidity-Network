@@ -1,10 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useWallet } from "../context/WalletContext";
 import { useToast } from "../context/ToastContext";
 import TokenSelector, { TokenAmount } from "./TokenSelector";
+import InvoiceFilterBar from "./InvoiceFilterBar";
 import { useApprovedTokens } from "../hooks/useApprovedTokens";
+import { applyInvoiceFilters, useInvoiceFilters } from "../hooks/useInvoiceFilters";
+import SkeletonRow, { LP_DISCOVERY_COLUMNS } from "./SkeletonRow";
 import {
   buildApproveTokenTransaction,
   claimDefault,
@@ -22,8 +25,11 @@ import RiskBadge from "./RiskBadge";
 import LPPortfolio from "./LPPortfolio";
 import { RISK_SORT_ORDER } from "../utils/risk";
 
+
 type Tab = "discovery" | "my-funded" | "watchlist";
 type FundingStep = "approve" | "fund";
+
+
 
 export default function LPDashboard() {
   const { address, connect, signTx } = useWallet();
@@ -41,6 +47,12 @@ export default function LPDashboard() {
   const [sortKey, setSortKey] = useState<keyof Invoice | "risk" | "yield">("amount");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [claimingInvoiceId, setClaimingInvoiceId] = useState<string | null>(null);
+  const {
+    filters,
+    setFilters,
+    clearFilters,
+    activeFilterCount,
+  } = useInvoiceFilters({ namespace: "lpInvoices" });
 
   const { watchlist, toggleWatchlist, isInWatchlist } = useWatchlist(address || null);
 
@@ -217,7 +229,18 @@ export default function LPDashboard() {
       setClaimingInvoiceId(null);
     }
   };
-  const sortedInvoices = [...invoices].sort((a: any, b: any) => {
+  const filteredInvoices = useMemo(
+    () =>
+      applyInvoiceFilters(invoices, filters, {
+        resolveTokenSymbol: (invoice) => {
+          const token = tokenMap.get(invoice.token ?? defaultToken?.contractId ?? "");
+          return token?.symbol ?? "USDC";
+        },
+      }),
+    [defaultToken?.contractId, filters, invoices, tokenMap],
+  );
+
+  const sortedInvoices = [...filteredInvoices].sort((a: any, b: any) => {
     if (sortKey === "risk") {
       const ra = RISK_SORT_ORDER[payerRisks.get(a.payer) ?? "Unknown"];
       const rb = RISK_SORT_ORDER[payerRisks.get(b.payer) ?? "Unknown"];
@@ -463,6 +486,14 @@ export default function LPDashboard() {
           </button>
         </div>
       </div>
+      <div className="px-6 pt-4">
+        <InvoiceFilterBar
+          filters={filters}
+          onFiltersChange={setFilters}
+          onClearFilters={clearFilters}
+          activeFilterCount={activeFilterCount}
+        />
+      </div>
 
       {activeTab === "my-funded" ? (
         <LPPortfolio
@@ -476,12 +507,8 @@ export default function LPDashboard() {
           <table className="w-full text-left">
             <thead className="bg-surface-container-low">
               <tr>
-                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
-                  ID
-                </th>
-                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
-                  Freelancer
-                </th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">ID</th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">Freelancer</th>
                 <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider cursor-pointer group" onClick={() => toggleSort("amount")}>
                   Amount {sortKey === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
                 </th>
@@ -491,13 +518,9 @@ export default function LPDashboard() {
                 <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider cursor-pointer group" onClick={() => toggleSort("due_date")}>
                   Due Date {sortKey === "due_date" && (sortOrder === "asc" ? "↑" : "↓")}
                 </th>
-                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
-                  Est. Yield
-                </th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">Est. Yield</th>
                 {activeTab === "watchlist" && (
-                  <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
-                    Added
-                  </th>
+                  <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">Added</th>
                 )}
                 {activeTab === "discovery" && (
                   <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider cursor-pointer" onClick={() => toggleSort("risk")}>
@@ -509,19 +532,17 @@ export default function LPDashboard() {
             </thead>
             <tbody className="divide-y divide-surface-dim">
               {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <SkeletonRow key={i} columns={LP_DISCOVERY_COLUMNS} />
+                ))
+              ) : (activeTab === "discovery" ? discoveryInvoices : watchlistInvoices).length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-on-surface-variant italic">
-                    Loading invoices from Stellar...
-                  </td>
-                </tr>
-              ) : (activeTab === "discovery" ? discoveryInvoices : activeTab === "watchlist" ? watchlistInvoices : myFundedInvoices).length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-on-surface-variant italic">
-                    No {activeTab === "discovery" ? "pending" : activeTab === "watchlist" ? "saved" : "funded"} invoices found.
+                    No {activeTab === "discovery" ? "pending" : "saved"} invoices found.
                   </td>
                 </tr>
               ) : (
-                (activeTab === "discovery" ? discoveryInvoices : activeTab === "watchlist" ? watchlistInvoices : myFundedInvoices).map((invoice: any, index: number) => (
+                (activeTab === "discovery" ? discoveryInvoices : watchlistInvoices).map((invoice: any, index: number) => (
                   <tr key={invoice.id.toString()} className="hover:bg-surface-variant/10 transition-colors">
                     <td className="px-6 py-5 font-bold text-primary">#{invoice.id.toString()}</td>
                     <td className="px-6 py-5">
@@ -547,13 +568,21 @@ export default function LPDashboard() {
                         {new Date(invoice.watchAddedAt).toLocaleDateString()}
                       </td>
                     )}
-                    <td className="px-6 py-5 text-right flex items-center justify-end gap-2">
-                      {(activeTab === "discovery" || activeTab === "watchlist") && (
+                    {activeTab === "discovery" && (
+                      <td className="px-6 py-5">
+                        <RiskBadge
+                          risk={payerRisks.get(invoice.payer) ?? "Unknown"}
+                          score={payerScores.get(invoice.payer) ?? null}
+                        />
+                      </td>
+                    )}
+                    <td className="px-6 py-5 text-right">
+                      <div className="inline-flex items-center gap-2">
                         <button
                           onClick={(e) => handleWatchlistToggle(invoice.id, e)}
                           className={`p-2 rounded-full transition-colors ${
-                            isInWatchlist(invoice.id) 
-                              ? "text-red-500 hover:bg-red-50" 
+                            isInWatchlist(invoice.id)
+                              ? "text-red-500 hover:bg-red-50"
                               : "text-on-surface-variant hover:bg-surface-variant/50"
                           }`}
                           title={isInWatchlist(invoice.id) ? "Remove from watchlist" : "Add to watchlist"}
@@ -562,33 +591,33 @@ export default function LPDashboard() {
                             bookmark
                           </span>
                         </button>
-                      )}
-                      {activeTab === "discovery" ? (
-                        <>
-                          <button
-                            id={index === 0 ? "fund-button" : undefined}
-                            onClick={() => handleFund(invoice)}
-                            className="bg-primary text-surface-container-lowest text-xs px-4 py-2 rounded-lg font-bold hover:bg-primary/90 shadow-sm active:scale-95 transition-all"
-                          >
-                            Fund
-                          </button>
-                        </>
-                      ) : (
-                        <div className="flex flex-col items-end gap-1">
-                          <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${
-                            invoice.status === 'Funded' ? 'bg-blue-100 text-blue-700' : 
-                            invoice.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                          }`}>
-                            {invoice.status}
-                          </span>
-                          {activeTab === "watchlist" && invoice.status !== "Pending" && (
+                        <button
+                          id={index === 0 ? "fund-button" : undefined}
+                          onClick={() => handleFund(invoice)}
+                          className="bg-primary text-surface-container-lowest text-xs px-4 py-2 rounded-lg font-bold hover:bg-primary/90 shadow-sm active:scale-95 transition-all"
+                        >
+                          Fund
+                        </button>
+                        {activeTab === "watchlist" && invoice.status !== "Pending" && (
+                          <div className="flex flex-col items-end gap-1">
+                            <span
+                              className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${
+                                invoice.status === "Funded"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : invoice.status === "Paid"
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-red-100 text-red-700"
+                              }`}
+                            >
+                              {invoice.status}
+                            </span>
                             <span className="text-[10px] bg-error-container text-on-error-container px-2 py-0.5 rounded flex items-center gap-1">
                               <span className="material-symbols-outlined text-[10px]">warning</span>
                               Already funded
                             </span>
-                          )}
-                        </div>
-                      )}
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))
