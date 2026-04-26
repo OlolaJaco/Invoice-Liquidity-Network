@@ -56,8 +56,6 @@ export default function RootLayout({
             <OnboardingFlow />
           </WalletProvider>
         </ToastProvider>
-            <CommandPalette />
-
       </body>
     </html>
   );

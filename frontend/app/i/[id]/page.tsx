@@ -1,5 +1,3 @@
-import InvoiceDetailPage from "@/src/pages/InvoiceDetail";
-
 "use client";
 
 import { use, useEffect, useState, useCallback } from "react";
@@ -746,6 +744,4 @@ export default function InvoiceStatusPage({
       </main>
     </>
   );
-export default function InvoiceDetailRoute({ params }: { params: { id: string } }) {
-  return <InvoiceDetailPage id={params.id} />;
 }

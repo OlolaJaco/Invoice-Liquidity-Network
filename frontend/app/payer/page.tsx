@@ -13,6 +13,7 @@ import { useApprovedTokens } from "../../hooks/useApprovedTokens";
 import { applyInvoiceFilters, useInvoiceFilters } from "../../hooks/useInvoiceFilters";
 import { formatAddress, formatDate, formatTokenAmount } from "../../utils/format";
 import { getAllInvoices, Invoice, markPaid } from "../../utils/soroban";
+import TokenSelector, { TokenAmount } from "../../components/TokenSelector";
 import InvoiceTable, { ColumnDefinition } from "../../components/InvoiceTable";
 
 const server = new rpc.Server(RPC_URL);

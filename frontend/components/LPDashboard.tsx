@@ -255,18 +255,7 @@ export default function LPDashboard() {
       setClaimingInvoiceId(null);
     }
   };
-  const filteredInvoices = useMemo(
-    () =>
-      applyInvoiceFilters(invoices, filters, {
-        resolveTokenSymbol: (invoice) => {
-          const token = tokenMap.get(invoice.token ?? defaultToken?.contractId ?? "");
-          return token?.symbol ?? "USDC";
-        },
-      }),
-    [defaultToken?.contractId, filters, invoices, tokenMap],
-  );
-
-  const sortedInvoices = [...filteredInvoices].sort((a: any, b: any) => {
+  const sortedInvoices = [...invoices].sort((a: any, b: any) => {
     if (sortKey === "risk") {
       const ra = RISK_SORT_ORDER[payerRisks.get(a.payer) ?? "Unknown"];
       const rb = RISK_SORT_ORDER[payerRisks.get(b.payer) ?? "Unknown"];
@@ -417,7 +406,7 @@ export default function LPDashboard() {
       sortable: true,
       renderCell: (inv) => (
         <span className="text-xs text-on-surface-variant">
-          {new Date(inv.watchAddedAt).toLocaleDateString()}
+          {new Date(inv.watchAddedAt).toLocaleDateString(getLocale())}
         </span>
       ),
     },
@@ -469,8 +458,11 @@ export default function LPDashboard() {
         <div>
           <h3 className="text-xl font-bold flex items-center gap-2">
             <span className="material-symbols-outlined text-primary">monitoring</span>
-            LP Dashboard
+            {t("lpDashboard.title")}
           </h3>
+          <p className="text-sm text-on-surface-variant mt-1">
+            {t("lpDashboard.subtitle")}
+          </p>
           <p className="text-sm text-on-surface-variant mt-1">Browse and fund invoices to earn yield.</p>
         </div>
 
@@ -483,7 +475,7 @@ export default function LPDashboard() {
                 : "text-on-surface-variant hover:bg-surface-variant/30"
             }`}
           >
-            Discovery
+            {t("lpDashboard.tabs.discovery")}
           </button>
           <button
             onClick={() => setActiveTab("watchlist")}
@@ -493,7 +485,7 @@ export default function LPDashboard() {
                 : "text-on-surface-variant hover:bg-surface-variant/30"
             }`}
           >
-            Watchlist
+            {t("lpDashboard.tabs.watchlist")}
             {watchlist.length > 0 && (
               <span className="ml-2 bg-primary-container text-on-primary-container px-1.5 py-0.5 rounded-full text-[10px]">
                 {watchlist.length}
@@ -508,7 +500,7 @@ export default function LPDashboard() {
                 : "text-on-surface-variant hover:bg-surface-variant/30"
             }`}
           >
-            My Funded
+            {t("lpDashboard.tabs.myFunded")}
           </button>
         </div>
 
@@ -545,24 +537,32 @@ export default function LPDashboard() {
             <thead className="bg-surface-container-low border-b border-surface-dim">
               <tr>
                 <th className="px-6 py-4 w-10"></th>
-                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">ID</th>
-                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">Freelancer</th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
+                  ID
+                </th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
+                  Freelancer
+                </th>
                 <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider cursor-pointer group" onClick={() => toggleSort("amount")}>
-                  Amount {sortKey === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
+                  {t("lpDashboard.tableHeaders.amount")} {sortKey === "amount" && (sortOrder === "asc" ? "↑" : "↓")}
                 </th>
                 <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider cursor-pointer group" onClick={() => toggleSort("discount_rate")}>
-                  Discount {sortKey === "discount_rate" && (sortOrder === "asc" ? "↑" : "↓")}
+                  {t("lpDashboard.tableHeaders.discount")} {sortKey === "discount_rate" && (sortOrder === "asc" ? "↑" : "↓")}
                 </th>
                 <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider cursor-pointer group" onClick={() => toggleSort("due_date")}>
-                  Due Date {sortKey === "due_date" && (sortOrder === "asc" ? "↑" : "↓")}
+                  {t("lpDashboard.tableHeaders.dueDate")} {sortKey === "due_date" && (sortOrder === "asc" ? "↑" : "↓")}
                 </th>
-                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">Est. Yield</th>
+                <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
+                  Est. Yield
+                </th>
                 {activeTab === "watchlist" && (
-                  <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">Added</th>
+                  <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider">
+                    Added
+                  </th>
                 )}
                 {activeTab === "discovery" && (
                   <th className="px-6 py-4 text-[11px] font-bold uppercase text-on-surface-variant tracking-wider cursor-pointer" onClick={() => toggleSort("risk")}>
-                    Risk {sortKey === "risk" && (sortOrder === "asc" ? "↑" : "↓")}
+                    {t("lpDashboard.tableHeaders.risk")} {sortKey === "risk" && (sortOrder === "asc" ? "↑" : "↓")}
                   </th>
                 )}
                 <th className="px-6 py-4"></th>
@@ -576,7 +576,13 @@ export default function LPDashboard() {
               ) : (activeTab === "discovery" ? discoveryInvoices : watchlistInvoices).length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-6 py-12 text-center text-on-surface-variant italic">
-                    No {activeTab === "discovery" ? "pending" : "saved"} invoices found.
+                    Loading invoices from Stellar...
+                  </td>
+                </tr>
+              ) : (activeTab === "discovery" ? discoveryInvoices : activeTab === "watchlist" ? watchlistInvoices : myFundedInvoices).length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-12 text-center text-on-surface-variant italic">
+                    No {activeTab === "discovery" ? "pending" : activeTab === "watchlist" ? "saved" : "funded"} invoices found.
                   </td>
                 </tr>
               ) : (
@@ -594,7 +600,7 @@ export default function LPDashboard() {
                     <td className="px-6 py-5">
                       <div className="flex flex-col">
                         <span className="text-sm font-medium">{formatAddress(invoice.freelancer)}</span>
-                        <span className="text-[10px] text-on-surface-variant">Payer: {formatAddress(invoice.payer)}</span>
+                        <span className="text-[10px] text-on-surface-variant">{t("lpDashboard.tableHeaders.payer")}: {formatAddress(invoice.payer)}</span>
                       </div>
                     </td>
                     <td className="px-6 py-5 font-bold">
@@ -611,7 +617,7 @@ export default function LPDashboard() {
                     </td>
                     {activeTab === "watchlist" && (
                       <td className="px-6 py-5 text-xs text-on-surface-variant">
-                        {new Date(invoice.watchAddedAt).toLocaleDateString()}
+                        {new Date(invoice.watchAddedAt).toLocaleDateString(getLocale())}
                       </td>
                     )}
                     {activeTab === "discovery" && (
@@ -631,35 +637,35 @@ export default function LPDashboard() {
                               ? "text-red-500 hover:bg-red-50"
                               : "text-on-surface-variant hover:bg-surface-variant/50"
                           }`}
-                          title={isInWatchlist(invoice.id) ? "Remove from watchlist" : "Add to watchlist"}
+                          title={isInWatchlist(invoice.id) ? t("lpDashboard.watchlist.remove") : t("lpDashboard.watchlist.add")}
                         >
                           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: isInWatchlist(invoice.id) ? "'FILL' 1" : "'FILL' 0" }}>
                             bookmark
                           </span>
                         </button>
-                        <button
-                          id={index === 0 ? "fund-button" : undefined}
-                          onClick={() => handleFund(invoice)}
-                          className="bg-primary text-surface-container-lowest text-xs px-4 py-2 rounded-lg font-bold hover:bg-primary/90 shadow-sm active:scale-95 transition-all"
-                        >
-                          Fund
-                        </button>
-                        {activeTab === "watchlist" && invoice.status !== "Pending" && (
-                          <div className="flex flex-col items-end gap-1">
-                            <span
-                              className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${
-                                invoice.status === "Funded"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : invoice.status === "Paid"
-                                    ? "bg-green-100 text-green-700"
-                                    : "bg-red-100 text-red-700"
-                              }`}
-                            >
-                              {invoice.status}
-                            </span>
+                      )}
+                      {activeTab === "discovery" ? (
+                        <>
+                          <button
+                            id={index === 0 ? "fund-button" : undefined}
+                            onClick={() => handleFund(invoice)}
+                            className="bg-primary text-surface-container-lowest text-xs px-4 py-2 rounded-lg font-bold hover:bg-primary/90 shadow-sm active:scale-95 transition-all"
+                          >
+                            Fund
+                          </button>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-end gap-1">
+                          <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded ${
+                            invoice.status === 'Funded' ? 'bg-blue-100 text-blue-700' : 
+                            invoice.status === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {invoice.status}
+                          </span>
+                          {activeTab === "watchlist" && invoice.status !== "Pending" && (
                             <span className="text-[10px] bg-error-container text-on-error-container px-2 py-0.5 rounded flex items-center gap-1">
                               <span className="material-symbols-outlined text-[10px]">warning</span>
-                              Already funded
+                              {t("lpDashboard.alreadyFunded")}
                             </span>
                           </div>
                         )}
@@ -674,14 +680,148 @@ export default function LPDashboard() {
       )}
 
       {/* Confirmation Modal */}
-      <FundConfirmModal
-        invoice={selectedInvoice}
-        onClose={() => setSelectedInvoice(null)}
-        onSuccess={() => {
-          setSelectedInvoice(null);
-          fetchData();
-        }}
-      />
+      {selectedInvoice && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+          <div className="bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/20 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-surface-dim">
+              <h4 className="text-xl font-bold">Fund Invoice #{selectedInvoice.id.toString()}</h4>
+              <p className="text-sm text-on-surface-variant mt-1">The funding token is fixed by the invoice. Approve it only when the current allowance is too low, then complete funding.</p>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              {selectedInvoiceToken ? (
+                <TokenSelector
+                  label="Invoice token"
+                  value={selectedInvoiceToken.contractId}
+                  tokens={tokens}
+                  readOnly
+                />
+              ) : null}
+
+              {needsApproval ? (
+                <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
+                  <div className="flex items-start gap-3">
+                    <StepPill active={currentStep === "approve"} complete={currentStep === "fund"}>
+                      1
+                    </StepPill>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold">Step 1: Approve {selectedInvoiceToken?.symbol ?? "token"}</p>
+                      <p className="text-xs text-on-surface-variant mt-1">
+                        {isCheckingAllowance
+                          ? "Checking current allowance..."
+                          : `Approve exactly ${selectedInvoiceToken ? formatTokenAmount(selectedInvoice.amount, selectedInvoiceToken) : selectedInvoice.amount.toString()} for the ILN contract.`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-xs text-on-surface-variant">
+                    <span>Current allowance</span>
+                    <span className="font-bold text-on-surface">
+                      {allowance === null || !selectedInvoiceToken ? "--" : formatTokenAmount(allowance, selectedInvoiceToken)}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-primary/15 bg-primary-container/20 px-4 py-3 text-sm text-on-surface">
+                  Allowance already covers this invoice. You can go straight to funding.
+                </div>
+              )}
+
+              <div className="rounded-xl border border-outline-variant/20 bg-surface-container-low p-4">
+                <div className="flex items-start gap-3">
+                    <StepPill active={currentStep === "fund"}>{needsApproval ? 2 : 1}</StepPill>
+                  <div>
+                    <p className="text-sm font-bold">{needsApproval ? "Step 2: Fund Invoice" : "Step 1: Fund Invoice"}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">
+                      Send the invoice principal once the ILN contract can spend your {selectedInvoiceToken?.symbol ?? "token"}.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between text-sm">
+                <span className="text-on-surface-variant">You will send:</span>
+                <span className="font-bold">
+                  {selectedInvoiceToken ? (
+                    <TokenAmount amount={formatTokenAmount(selectedInvoice.amount, selectedInvoiceToken)} token={selectedInvoiceToken} />
+                  ) : null}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm text-green-600 font-medium">
+                <span>Freelancer receives immediately:</span>
+                <span>
+                  {selectedInvoiceToken ? (
+                    <TokenAmount
+                      amount={formatTokenAmount(selectedInvoice.amount - calculateYield(selectedInvoice.amount, selectedInvoice.discount_rate), selectedInvoiceToken)}
+                      token={selectedInvoiceToken}
+                    />
+                  ) : null}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-on-surface-variant">You receive on settlement:</span>
+                <span className="font-bold">
+                  {selectedInvoiceToken ? (
+                    <TokenAmount amount={formatTokenAmount(selectedInvoice.amount, selectedInvoiceToken)} token={selectedInvoiceToken} />
+                  ) : null}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm border-t border-surface-dim pt-4">
+                <span className="text-on-surface-variant">Your yield (discount):</span>
+                <span className="font-bold text-green-600">
+                  {selectedInvoiceToken ? (
+                    <TokenAmount
+                      amount={`${formatTokenAmount(calculateYield(selectedInvoice.amount, selectedInvoice.discount_rate), selectedInvoiceToken)} (${(selectedInvoice.discount_rate / 100).toFixed(2)}%)`}
+                      token={selectedInvoiceToken}
+                    />
+                  ) : null}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-on-surface-variant">Estimated due date:</span>
+                <span className="font-bold">{formatDate(selectedInvoice.due_date)}</span>
+              </div>
+
+              {fundingError ? (
+                <div className="rounded-xl border border-error/15 bg-error-container/70 px-4 py-3 text-sm text-on-error-container">
+                  {fundingError}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="p-6 bg-surface-container-low flex gap-3">
+              <button
+                disabled={isFunding || isApproving}
+                onClick={() => setSelectedInvoice(null)}
+                className="flex-1 py-3 rounded-xl font-bold text-sm border border-outline-variant hover:bg-surface-dim transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isFunding || isApproving || isCheckingAllowance}
+                onClick={currentStep === "approve" ? approveToken : confirmFunding}
+                className="flex-[2] py-3 rounded-xl font-bold text-sm bg-primary text-surface-container-lowest hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {isCheckingAllowance ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-surface-container-lowest border-t-transparent rounded-full animate-spin"></span>
+                    Checking allowance...
+                  </>
+                ) : isApproving ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-surface-container-lowest border-t-transparent rounded-full animate-spin"></span>
+                    Approving {selectedInvoiceToken?.symbol ?? "token"}...
+                  </>
+                ) : isFunding ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-surface-container-lowest border-t-transparent rounded-full animate-spin"></span>
+                    Funding...
+                  </>
+                ) : currentStep === "approve" ? `Approve ${selectedInvoiceToken?.symbol ?? "token"}` : "Fund Invoice"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
