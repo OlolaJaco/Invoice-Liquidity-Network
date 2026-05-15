@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import React, { Suspense } from "react";
 import "./globals.css";
+import I18nProvider from "@/components/I18nProvider";
 import { ToastProvider } from "@/context/ToastContext";
 import { WalletProvider } from "@/context/WalletContext";
 import { NotificationProvider } from "@/context/NotificationContext";
@@ -49,29 +50,31 @@ export default function RootLayout({
       <body
         className="antialiased bg-background text-foreground transition-colors duration-300 selection:bg-primary-container selection:text-on-primary-container"
       >
-        <Providers>
-          <ToastProvider>
-            <WalletProvider>
-              <NotificationProvider>
-                <FABProvider />
-                <div className="min-h-screen flex flex-col">
-                  <NetworkBanner />
-                  <div className="flex-1">
-                    <Suspense fallback={null}>
-                      {children}
-                    </Suspense>
+        <I18nProvider>
+          <Providers>
+            <ToastProvider>
+              <WalletProvider>
+                <NotificationProvider>
+                  <FABProvider />
+                  <div className="min-h-screen flex flex-col">
+                    <NetworkBanner />
+                    <div className="flex-1">
+                      <Suspense fallback={null}>
+                        {children}
+                      </Suspense>
+                    </div>
                   </div>
-                </div>
-                <Suspense fallback={null}>
-                  <OnboardingFlow />
-                </Suspense>
-                <Suspense fallback={null}>
-                  <CommandPalette />
-                </Suspense>
-              </NotificationProvider>
-            </WalletProvider>
-          </ToastProvider>
-        </Providers>
+                  <Suspense fallback={null}>
+                    <OnboardingFlow />
+                  </Suspense>
+                  <Suspense fallback={null}>
+                    <CommandPalette />
+                  </Suspense>
+                </NotificationProvider>
+              </WalletProvider>
+            </ToastProvider>
+          </Providers>
+        </I18nProvider>
       </body>
     </html>
   );
