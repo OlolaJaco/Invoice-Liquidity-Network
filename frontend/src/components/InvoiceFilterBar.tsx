@@ -30,7 +30,7 @@ export default function InvoiceFilterBar({
 
   return (
     <div className={containerClass}>
-      <div className="flex flex-col gap-3 md:flex-row md:items-center">
+      <div className="flex flex-col gap-3 mb-5 md:flex-row md:items-center">
         <input
           type="search"
           value={filters.search}

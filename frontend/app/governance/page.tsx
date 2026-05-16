@@ -218,25 +218,6 @@ export default function GovernancePage() {
         </div>
       </section>
 
-      {/* Stats strip */}
-      {!loading && (
-        <section className="bg-surface-container py-5 px-8 border-b border-outline-variant/10">
-          <div className="max-w-7xl mx-auto flex flex-wrap gap-8">
-            {[
-              { label: "Total Proposals", value: proposals.length },
-              { label: "Active", value: counts["Active"] },
-              { label: "Passed", value: counts["Passed"] },
-              { label: "Executed", value: counts["Executed"] },
-            ].map(({ label, value }) => (
-              <div key={label}>
-                <p className="text-2xl font-bold text-on-surface">{value}</p>
-                <p className="text-xs text-on-surface-variant">{label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       {/* Main content */}
       <section className="py-12 px-8">
         <div className="max-w-7xl mx-auto">

@@ -38,9 +38,9 @@ export default function Navbar() {
           ILN
         </Link>
         <div className="hidden md:flex items-center gap-8">
-          <a className="text-on-surface-variant hover:text-primary text-sm font-medium" href="#">
+          {/* <a className="text-on-surface-variant hover:text-primary text-sm font-medium" href="#">
             {t("nav.howItWorks")}
-          </a>
+          </a> */}
           <Link
             className="text-on-surface-variant hover:text-primary transition-colors duration-200 text-sm font-medium"
             href="/freelancer"
@@ -77,12 +77,12 @@ export default function Navbar() {
           >
             {t("nav.analytics")}
           </Link>
-          <a
+          {/* <a
             className="text-on-surface-variant hover:text-primary transition-colors duration-200 text-sm font-medium"
             href="#"
           >
             {t("nav.docs")}
-          </a>
+          </a> */}
         </div>
 
         <div className="flex items-center gap-4">

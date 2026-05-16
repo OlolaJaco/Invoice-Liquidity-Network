@@ -88,11 +88,7 @@ export default function WalletButton() {
                     </span>
                   );
                 })
-              ) : (
-                <span className="rounded-full border border-outline-variant/15 bg-surface-container-low px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-                  No token balance
-                </span>
-              )}
+              ) : null}
             </div>
           ) : null}
           <span className="text-xs font-mono text-on-surface-variant">{formatAddress(address!)}</span>

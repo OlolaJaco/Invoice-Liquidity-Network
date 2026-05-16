@@ -25,7 +25,7 @@
   },
   "landing": {
     "testnetLive": "Testnet Live",
-    "heroTitle": "Turn unpaid invoices into <bold>instant</bold> liquidity",
+    "heroTitle": "Turn unpaid invoices into instant liquidity",
     "heroSubtitle": "ILN is an open-source invoice factoring protocol on Stellar. Get paid today by selling your receivables to global liquidity providers at a fair discount.",
     "submitInvoice": "Submit an Invoice",
     "fundAsLP": "Fund Invoices as LP",
