@@ -148,6 +148,44 @@ export async function runCli(
       ui.info(formatInvoiceList(invoices));
     });
 
+  program
+    .command("faucet")
+    .description("Fund an address with testnet XLM, USDC, and EURC. Automatically sets up trustlines if possible.")
+    .argument("[address]", "target Stellar address (defaults to configured signer)")
+    .action(async (address?: string) => {
+      const config = load();
+      await runFaucet(config, ui, address);
+    });
+
+  const configCommand = program.command("config").description("Configuration utilities");
+
+  configCommand
+    .command("validate")
+    .description("Validate the current configuration file")
+    .action(() => {
+      try {
+        const config = load();
+        ui.success(`Configuration is valid!`);
+        ui.info(`Resolved config: ${describeConfig(config)}`);
+      } catch (error: any) {
+        ui.error(error.message);
+        process.exitCode = 1;
+      }
+    });
+
+  configCommand
+    .command("init")
+    .description("Scaffold a new .iln.config.ts file in the current directory")
+    .action(() => {
+      try {
+        const path = scaffoldConfig(process.cwd());
+        ui.success(`Successfully scaffolded template config at ${path}`);
+      } catch (error: any) {
+        ui.error(error.message);
+        process.exitCode = 1;
+      }
+    });
+
   // Development commands
   const devCommand = program.command("dev").description("Development utilities");
 
