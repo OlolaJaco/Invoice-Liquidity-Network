@@ -5,3 +5,4 @@ export * from "./generated/types";
 export * from "./notifications";
 export * from "./analytics";
 export * from "./federation";
+export * from "./governance";
