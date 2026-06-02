@@ -327,7 +327,7 @@ describe("ILNSdk", () => {
 
     const sdk = createSdk(server);
     await expect(sdk.getInvoice(1n)).rejects.toThrow(
-      "Contract method get_invoice returned an error: \"Invalid something\"."
+      "Contract method get_invoice returned an error: Invalid something."
     );
   });
 

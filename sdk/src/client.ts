@@ -23,7 +23,7 @@ import type {
   TransactionSigner,
 } from "./types";
 
-import { parseContractError } from "./errors";
+import { GenericContractError, parseContractError } from "./errors";
 
 const READ_ACCOUNT = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
 const POLL_ATTEMPTS = 20;
@@ -128,7 +128,7 @@ export class ILNSdk {
     operations: TransactionOperation[],
   ): Promise<string> {
     const sources = operations
-      .map((operation) => (operation as { source?: string }).source)
+      .map((operation) => this.getOperationSourceAddress(operation))
       .filter((source): source is string => source !== undefined && source !== null);
 
     if (sources.length > 0) {
@@ -146,6 +146,23 @@ export class ILNSdk {
     }
 
     return this.signer.getPublicKey();
+  }
+
+  private getOperationSourceAddress(operation: TransactionOperation): string | undefined {
+    if ((operation as { source?: string }).source) {
+      return (operation as { source?: string }).source;
+    }
+
+    const sourceAccount = (operation as { _attributes?: { sourceAccount?: { _value?: unknown } } })?._attributes?.sourceAccount;
+    if (!sourceAccount || !sourceAccount._value) {
+      return undefined;
+    }
+
+    try {
+      return Address.account(sourceAccount._value).toString();
+    } catch {
+      return undefined;
+    }
   }
 
   private validateBatchSimulation(simulation: unknown): void {
@@ -514,13 +531,42 @@ export class ILNSdk {
       return (value as { Ok: unknown }).Ok;
     }
     if ("err" in value) {
-      throw parseContractError((value as { err: unknown }).err);
+      const error = (value as { err: unknown }).err;
+      const parsedError = parseContractError(error);
+      if (parsedError instanceof GenericContractError) {
+        throw new Error(
+          `Contract method ${method} returned an error: ${this.formatContractError(error)}.`,
+        );
+      }
+      throw parsedError;
     }
     if ("Err" in value) {
-      throw parseContractError((value as { Err: unknown }).Err);
+      const error = (value as { Err: unknown }).Err;
+      const parsedError = parseContractError(error);
+      if (parsedError instanceof GenericContractError) {
+        throw new Error(
+          `Contract method ${method} returned an error: ${this.formatContractError(error)}.`,
+        );
+      }
+      throw parsedError;
     }
 
     return value;
+  }
+
+  private formatContractError(error: unknown): string {
+    if (typeof error === "string") {
+      return error;
+    }
+    if (typeof error === "number" || typeof error === "bigint" || typeof error === "boolean") {
+      return String(error);
+    }
+
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
   }
 
   private toAddress(address: string) {
