@@ -6,6 +6,16 @@ Thank you for your interest in contributing. Invoice Liquidity Network (ILN) is 
 
 ## Project structure
 
+- [Ways to contribute](#ways-to-contribute)
+- [Applying to work on an issue](#applying-to-work-on-an-issue)
+- [Project board](#project-board)
+- [Development setup](#development-setup)
+- [CI/CD pipeline reference](#cicd-pipeline-reference)
+- [Submitting a pull request](#submitting-a-pull-request)
+- [Branch protection](#branch-protection)
+- [Code standards](#code-standards)
+- [Automated dependency updates](#automated-dependency-updates)
+- [Getting help](#getting-help)
 | Repository | Purpose | Typical contributions |
 |------------|---------|-----------------------|
 | `Invoice-Liquidity-Network` | Project-level repo: shared docs, SDK, CLI, indexer, notifications, repo tooling, developer guides | SDK, CLI, docs, indexer improvements, notifications, repo workflows, shared tests |
@@ -122,6 +132,15 @@ Common labels include:
 
 ---
 
+## CI/CD pipeline reference
+
+The repository's GitHub Actions workflows are documented in [docs/ci-cd.md](./docs/ci-cd.md). That reference explains what each workflow does, what secrets it needs, how long it usually takes, and how to debug failures.
+
+Use it before pushing changes so you can match the relevant CI checks locally.
+
+---
+
+## Submitting a pull request
 ## Pull request process
 
 1. Fork the repository.
