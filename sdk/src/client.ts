@@ -10,7 +10,6 @@ import {
   xdr,
 } from "@stellar/stellar-sdk";
 import { createLogger } from "./logger";
-import { openSSE } from "./stream";
 
 import type { Invoice, InvoiceState } from "@iln/shared";
 
