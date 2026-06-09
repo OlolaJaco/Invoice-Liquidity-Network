@@ -12,6 +12,7 @@
     "generate:types": "ts-node --esm scripts/generate-types.ts",
     "dev": "turbo run dev",
     "lint": "turbo run lint",
+    "type-check": "turbo run type-check",
     "docs:dev": "npm run dev -w @invoice-liquidity/docs",
     "docs:build": "npm run build -w @invoice-liquidity/docs",
     "react:dev": "npm run dev -w @iln/react",
@@ -49,3 +50,5 @@
     }
   }
 }
+
+

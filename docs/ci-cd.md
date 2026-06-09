@@ -430,3 +430,19 @@ Security scans and code scanning are harder to reproduce exactly outside GitHub 
 - Environment settings cannot be committed to the repository; they must be created in the GitHub UI.
 - If `mainnet` is selected, GitHub will block the deployment until required reviewers approve the workflow run.
 - Sibling repos should pin reusable workflow refs (`@main` or a release tag) rather than floating branches in production CI.
+
+## Turborepo Build Pipeline
+
+Turborepo optimizes and speeds up the build process for this monorepo by caching task outputs and running tasks in parallel.
+
+The 4 pipelines: `build`, `test`, `lint`, `type-check`.
+
+How to enable remote caching with Vercel: run `pnpm dlx turbo login` then `pnpm dlx turbo link`.
+
+Expected cache hit rates:
+- First run: 0% (cold cache, everything runs)
+- Subsequent runs with no changes: ~90-100% (full cache hit)
+- Typical CI runs with partial changes: ~60-80%
+- After SDK changes: ~20-40% (most packages depend on SDK)
+
+Environment variables needed for CI remote caching: `TURBO_TOKEN` and `TURBO_TEAM`.
