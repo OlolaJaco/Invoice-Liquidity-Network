@@ -345,7 +345,7 @@ export function getInvoiceHistory(
   return queryInvoices({ [role]: address });
 }
 
-
+export function getTopLPs(limit: number, period: string): LPStat[] {
   const now = Date.now();
   const since =
     period === "week"
